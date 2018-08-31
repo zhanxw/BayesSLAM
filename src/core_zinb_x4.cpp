@@ -1,12 +1,16 @@
-#include <RcppArmadillo.h>
+// #include <RcppArmadillo.h>
 #include <RcppArmadilloExtensions/sample.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 
-#include "common.h"
+static double norm_rs(double a, double b);
+static double half_norm_rs(double a, double b);
+static double unif_rs(double a, double b);
+static double exp_rs(double a, double b);
+static double rnorm_trunc(double mu, double sigma, double lower, double upper);
 
 // [[Rcpp::export]]
-Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector s, int iter, bool DPP, double c_s, IntegerMatrix S, bool aggregate, bool fold_change, NumericMatrix b, NumericVector b_0) {
+Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector s, int iter, bool DPP, IntegerMatrix S, bool aggregate, bool store, double b, double h) {
   // Read data dimensionality
   int n = Y.nrow();
   int p = Y.ncol();
@@ -57,15 +61,15 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
   double b_pi = 1;
   double a_phi = 0.001; 
   double b_phi = 0.001; 
-  //double a_phi = 10; 
-  //double b_phi = 1; 
   double a_omega = 1.0;
   double b_omega = 1.0;
   
   double a_0 = 2.0;
   double a = 2.0;
-  double h_0 = 10;
-  double h = 10;
+  double b_0 = b;
+  // double b = 1.0;
+  double h_0 = h;
+  //double h = 1000;
   
   // Set algorithm settings
   int burn = iter*0.5;
@@ -82,14 +86,15 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
   int H_sum = 0;
   int p_valid = 0;
   double pi, alpha_temp, max_temp, sum_temp, hastings, phi_temp, temp, temp_2, temp_4, temp_5, s_temp, loga_lwr, loga_upp, min_Y;
-  double accept_gamma = 0;
-  double accept_phi = 0;
-  double accept_alpha = 0;
+  double accept_gamma = 0.0;
+  double accept_phi = 0.0;
+  double accept_alpha = 0.0;
+  
   IntegerVector gamma(p);
-  IntegerVector flag(p, 0);
+  IntegerVector flag(p);
   IntegerVector gamma_sum_store(iter);
   IntegerVector H_sum_store(iter);
-  IntegerVector nk(K, 0);
+  IntegerVector nk(K);
   NumericVector phi(p);
   NumericVector phi_mean(p);
   NumericVector gamma_ppi(p);
@@ -97,22 +102,21 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
   NumericVector prob_temp(2);
   IntegerMatrix H(n, p);
   NumericMatrix H_ppi(n, p);
-  NumericVector a_s(p, 0.0);
   NumericMatrix A(n, p);
   NumericMatrix A_mean(n, p);
-  NumericVector temp_3(n, 0.0);
+  NumericVector temp_3(n);
   NumericMatrix logafc(iter - burn, p);
-  NumericMatrix varloga(K + 1, p);
+  NumericMatrix s_store(iter - burn, n);
   
   // Load settings for Dirichlet process prior
-  // double c_s = 0.0;
+  double c_s = 0.0;
   double a_m = 1.0;
   double b_m = 1.0;
   double a_t = 1.0;
   double b_t = 1.0;
   double tau_eta = 1.0;
   double sigma_s = 1.0;
-  double s_infty;
+  double logs_infty;
   IntegerVector nu_s(n);
   IntegerVector epsilon_s(n);
   IntegerVector state_s(M);
@@ -123,20 +127,6 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
   NumericVector s_mean(n);
   
   // Initialization
-  for(j = 0; j < p; j++)
-  {
-    count_temp = 0;
-    for(i = 0; i < n; i++)
-    {
-      if(Y(i, j) != 0)
-      {
-        count_temp++;
-        a_s(j) = a_s(j) + Y(i, j)/s(i);
-      }
-    }
-    a_s(j) = a_s(j)/count_temp;
-  }
-  
   for(j = 0; j < p; j++)
   {
     for(k = 0; k < K; k++)
@@ -168,7 +158,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
       }
       for(i = 0; i < n; i++)
       {
-        A(i, j) = a_s(j);
+        A(i, j) = 1.0;
         A_mean(i, j) = 0;
         if(Y_ext(i, j) == 0)
         {
@@ -218,10 +208,10 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
       }
     }
   }
-  s_infty = log(max(temp_3)/min(temp_3));
-  loga_upp = log(max(Y_ext)/exp(c_s - s_infty));
-  loga_lwr = log(min_Y/exp(c_s + s_infty));
-
+  logs_infty = log(max(temp_3)/min(temp_3));
+  loga_upp = log(max(Y_ext)/exp(c_s - logs_infty));
+  loga_lwr = log(min_Y/exp(c_s + logs_infty));
+  
   // MCMC
   for(it = 0; it < iter; it++)
   {
@@ -321,11 +311,11 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
             temp_4 = temp + log(alpha_temp)*log(alpha_temp);
             temp_5 = temp_2 + log(alpha_temp);
             temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h_0);
-            hastings = hastings - (a_0 + count_temp*0.5)*log(b_0(j) + temp_4*0.5);
+            hastings = hastings - (a_0 + count_temp*0.5)*log(b_0 + temp_4*0.5);
             temp_4 = temp + log(A(i, j))*log(A(i, j));
             temp_5 = temp_2 + log(A(i, j));
             temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h_0);
-            hastings = hastings + (a_0 + count_temp*0.5)*log(b_0(j) + temp_4*0.5);
+            hastings = hastings + (a_0 + count_temp*0.5)*log(b_0 + temp_4*0.5);
           }
           else
           {
@@ -343,12 +333,12 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
             }
             temp_4 = temp + log(alpha_temp)*log(alpha_temp);
             temp_5 = temp_2 + log(alpha_temp);
-            temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h_0);
-            hastings = hastings - (a + count_temp*0.5)*log(b(z(i), j) + temp_4*0.5);
+            temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h);
+            hastings = hastings - (a + count_temp*0.5)*log(b + temp_4*0.5);
             temp_4 = temp + log(A(i, j))*log(A(i, j));
             temp_5 = temp_2 + log(A(i, j));
-            temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h_0);
-            hastings = hastings + (a + count_temp*0.5)*log(b(z(i), j) + temp_4*0.5);
+            temp_4 = temp_4 - temp_5*temp_5/(count_temp + 1/h);
+            hastings = hastings + (a + count_temp*0.5)*log(b + temp_4*0.5);
           }
           if (hastings >= log(double(rand()%10001)/10000))
           {
@@ -357,33 +347,6 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
               accept_alpha++;
             }
           }
-          /*
-          else
-          {
-            temp = 0;
-            count_temp = 0;
-            for(ii = 0; ii < n; ii++)
-            {
-              if(gamma(j) == 0)
-              {
-                if(H(ii, j) == 0)
-                {
-                  temp = temp + A(ii, j);
-                  count_temp++;
-                }
-              }
-              else
-              {
-                if(H(ii, j) == 0 && z(ii) == z(i))
-                {
-                  temp = temp + A(ii, j);
-                  count_temp++;
-                }
-              }
-            }
-            A(i, j) = temp/count_temp;
-          }
-           */
         }
       }
     }
@@ -412,7 +375,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
           }
           temp = temp - temp_2*temp_2/(count_temp + 1/h_0);
           //hastings = hastings + (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + count_temp*0.5)*log(b_0(j) + temp*0.5));
-          hastings = hastings + (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + count_temp*0.5)*log(b_0(j) + temp*0.5));
+          hastings = hastings + (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0) - (a_0 + count_temp*0.5)*log(b_0 + temp*0.5));
           for(k = 0; k < K; k++)
           {
             temp = 0;
@@ -429,7 +392,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
             }
             temp = temp - temp_2*temp_2/(count_temp + 1/h);
             //hastings = hastings - (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b(k, j)) - (a + count_temp*0.5)*log(b(k, j) + temp*0.5));
-            hastings = hastings - (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b(k, j)) - (a + count_temp*0.5)*log(b(k, j) + temp*0.5));
+            hastings = hastings - (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b) - (a + count_temp*0.5)*log(b + temp*0.5));
           }
         }
         else // Add
@@ -451,7 +414,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
             }
             temp = temp - temp_2*temp_2/(count_temp + 1/h);
             //hastings = hastings + (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b(k, j)) - (a + count_temp*0.5)*log(b(k, j) + temp*0.5));
-            hastings = hastings + (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b(k, j)) - (a + count_temp*0.5)*log(b(k, j) + temp*0.5));
+            hastings = hastings + (-log(count_temp*h + 1)*0.5 + lgamma(a + count_temp*0.5) - lgamma(a) + a*log(b) - (a + count_temp*0.5)*log(b + temp*0.5));
           }
           temp = 0;
           temp_2 = 0;
@@ -467,7 +430,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
           }
           temp = temp - temp_2*temp_2/(count_temp + 1/h_0);
           //hastings = hastings - (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + count_temp*0.5)*log(b_0(j) + temp*0.5));
-          hastings = hastings - (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + count_temp*0.5)*log(b_0(j) + temp*0.5));
+          hastings = hastings - (-log(count_temp*h_0 + 1)*0.5 + lgamma(a_0 + count_temp*0.5) - lgamma(a_0) + a_0*log(b_0) - (a_0 + count_temp*0.5)*log(b_0 + temp*0.5));
         }
         if (hastings >= log(double(rand()%10001)/10000))
         {
@@ -493,7 +456,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
       // Update s
       for(i = 0; i < n; i++)
       {
-        s_temp = exp(rnorm_trunc(log(s(i)), tau_s, c_s - s_infty, c_s + s_infty));
+        s_temp = exp(rnorm_trunc(log(s(i)), tau_s, c_s - logs_infty, c_s + logs_infty));
         hastings = 0;
         for(j = 0; j < p_b; j++)
         {
@@ -627,7 +590,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
     gamma_sum_store(it) = gamma_sum;
     H_sum_store(it) = H_sum;
     pi_store(it) = pi;
-    if(it > burn) {
+    if(it >= burn) {
       for(j = 0; j < p; j++)
       {
         if(flag(j) == 0)
@@ -642,7 +605,7 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
           {
             H_ppi(i, j) = H_ppi(i, j) + H(i, j);
             A_mean(i, j) = A_mean(i, j) + A(i, j);
-            if(fold_change)
+            if(store)
             {
               if(H(i, j) == 0)
               {
@@ -659,57 +622,198 @@ Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector 
               }
             }
           }
-          if(fold_change)
+          if(store)
           {
-            logafc(it - burn - 1, j) = log(temp_2/count_temp_2) - log(temp/count_temp);
+            logafc(it - burn, j) = log(temp_2) - log(count_temp_2) - log(temp) + log(count_temp);
           }
         }
         else
         {
-          if(fold_change)
+          if(store)
           {
-            logafc(it - burn - 1, j) = 0;
+            logafc(it - burn, j) = 0;
           }
         }
       }
       for(i = 0; i < n; i++)
       {
         s_mean(i) = s_mean(i) + s(i);
+        if(store)
+        {
+          s_store(it - burn, i) = s(i);
+        }
       }
     }
   }
   
-  accept_gamma = accept_gamma/E/(iter - burn - 1);
-  accept_phi = accept_phi/p_valid/(iter - burn - 1);
-  accept_alpha = accept_alpha/n/p_valid/(iter - burn - 1);
+  accept_gamma = accept_gamma/E/(iter - burn);
+  accept_phi = accept_phi/p_valid/(iter - burn);
+  accept_alpha = accept_alpha/n/p_valid/(iter - burn);
   for(j = 0; j < p; j++)
   {
     if(flag(j) == 0)
     {
-      gamma_ppi(j) = gamma_ppi(j)/(iter - burn - 1);
-      phi_mean(j) = phi_mean(j)/(iter - burn - 1);
+      gamma_ppi(j) = gamma_ppi(j)/(iter - burn);
+      phi_mean(j) = phi_mean(j)/(iter - burn);
       for(i = 0; i < n; i++)
       {
-        H_ppi(i, j) = H_ppi(i, j)/(iter - burn - 1);
-        A_mean(i, j) = A_mean(i, j)/(iter - burn - 1);
+        H_ppi(i, j) = H_ppi(i, j)/(iter - burn);
+        A_mean(i, j) = A_mean(i, j)/(iter - burn);
       }
-    }
-    for(k = 0; k < K + 1; k++)
-    {
-      varloga(k, j) = varloga(k, j)/(iter - burn - 1);
     }
   }
   for(i = 0; i < n; i++)
   {
-    s_mean(i) = s_mean(i)/(iter - burn - 1);
+    s_mean(i) = s_mean(i)/(iter - burn);
   }
   
-  if(fold_change)
+  if(store)
   {
-    return Rcpp::List::create(Rcpp::Named("logafc") = logafc, Rcpp::Named("flag") = flag, Rcpp::Named("s") = s_mean, Rcpp::Named("A") = A_mean, Rcpp::Named("phi") = phi_mean, Rcpp::Named("H_ppi") = H_ppi, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("H_sum") = H_sum_store, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("pi") = pi_store, Rcpp::Named("accept_gamma") = accept_gamma, Rcpp::Named("accept_phi") = accept_phi, Rcpp::Named("accept_alpha") = accept_alpha);
+    return Rcpp::List::create(Rcpp::Named("logafc") = logafc, Rcpp::Named("flag") = flag, Rcpp::Named("s") = s_store, Rcpp::Named("A") = A_mean, Rcpp::Named("phi") = phi_mean, Rcpp::Named("H_ppi") = H_ppi, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("H_sum") = H_sum_store, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("pi") = pi_store, Rcpp::Named("accept_gamma") = accept_gamma, Rcpp::Named("accept_phi") = accept_phi, Rcpp::Named("accept_alpha") = accept_alpha);
   }
   else
   {
     return Rcpp::List::create(Rcpp::Named("flag") = flag, Rcpp::Named("s") = s_mean, Rcpp::Named("A") = A_mean, Rcpp::Named("phi") = phi_mean, Rcpp::Named("H_ppi") = H_ppi, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("H_sum") = H_sum_store, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("pi") = pi_store, Rcpp::Named("accept_gamma") = accept_gamma, Rcpp::Named("accept_phi") = accept_phi, Rcpp::Named("accept_alpha") = accept_alpha);
   }
+}
+
+double rnorm_trunc(double mu, double sigma, double lower, double upper)
+{
+  int change;
+  double a, b;
+  double logt1 = log(0.150), logt2 = log(2.18), t3 = 0.725;
+  double z, tmp, lograt;
+  
+  change = 0;
+  a = (lower - mu)/sigma;
+  b = (upper - mu)/sigma;
+  
+  // First scenario
+  if( (a == R_NegInf)||(b == R_PosInf))
+  {
+    if(a == R_NegInf)
+    {
+      change = 1;
+      a = -b;
+      b = R_PosInf;
+    }
+    // The two possibilities for this scenario
+    if(a <= 0.45) z = norm_rs(a, b);
+    else z = exp_rs(a, b);
+    if(change) z = -z;
+  }
+  
+  // Second scenario
+  else if((a*b) <= 0.0)
+  {
+    // The two possibilities for this scenario
+    if((R::dnorm(a, 0.0, 1.0,1.0) <= logt1) || (R::dnorm(b, 0.0, 1.0, 1.0) <= logt1))
+    {
+      z = norm_rs(a, b);
+    }
+    else z = unif_rs(a,b);
+  }
+  
+  // Third scenario
+  else
+  {
+    if(b < 0)
+    {
+      tmp = b; b = -a; a = -tmp; change = 1;
+    }
+    
+    lograt = R::dnorm(a, 0.0, 1.0, 1.0) - R::dnorm(b, 0.0, 1.0, 1.0);
+    if(lograt <= logt2)
+    {
+      z = unif_rs(a,b);
+    }
+    else if((lograt > logt1)&&(a < t3))
+    {
+      z = half_norm_rs(a,b);
+    }
+    else
+    {
+      z = exp_rs(a,b);
+    }
+    if(change)
+    {
+      z = -z;
+    }
+  }
+  double output;
+  output = sigma*z + mu;
+  return (output);
+}
+
+double exp_rs(double a, double b)
+{
+  double  z, u, rate;
+  rate = 1/a;
+  
+  // Generate a proposal on (0, b-a)
+  z = R::rexp(rate);
+  while(z > (b-a))
+  {
+    z = R::rexp(rate);
+  }
+  u = R::runif(0.0, 1.0);
+  
+  while( log(u) > (-0.5*z*z))
+  {
+    z = R::rexp(rate);
+    while(z > (b-a))
+    {
+      z = R::rexp(rate);
+    }
+    u = R::runif(0.0,1.0);
+  }
+  return(z+a);
+}
+
+double unif_rs(double a, double b)
+{
+  double xstar, logphixstar, x, logu;
+  
+  // Find the argmax (b is always >= 0)
+  // This works because we want to sample from N(0,1)
+  if(a <= 0.0) 
+  {
+    xstar = 0.0;
+  }
+  else 
+  {
+    xstar = a;
+  }
+  logphixstar = R::dnorm(xstar, 0.0, 1.0, 1.0);
+  
+  x = R::runif(a, b);
+  logu = log(R::runif(0.0, 1.0));
+  while(logu > (R::dnorm(x, 0.0, 1.0,1.0) - logphixstar))
+  {
+    x = R::runif(a, b);
+    logu = log(R::runif(0.0, 1.0));
+  }
+  return x;
+}
+
+double half_norm_rs(double a, double b)
+{
+  double x;
+  x = fabs(norm_rand());
+  while((x<a)||(x>b)) 
+  {
+    x = fabs(norm_rand());
+  }
+  return x;
+}
+
+double norm_rs(double a, double b)
+{
+  double x;
+  x = Rf_rnorm(0.0, 1.0);
+  while((x < a)||(x > b)) 
+  {
+    x = norm_rand();
+  }
+  return x;
 }

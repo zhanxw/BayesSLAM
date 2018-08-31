@@ -90,90 +90,32 @@ drawPhyloTree <- function(taxa, highlight = NULL, title = NULL) {
     p <- p %<+% dd
     groups <- unique(dd[, c("size", "col", "alpha")])
     ## note, below is tedious, as we cannot add geom_point2 programmatically
-    aesList <- list()
     extractAes <- function(dd, groups, p, i) {
       . <- subset(dd, 
                   size == groups[i, "size"] &
                     col == groups[i, "col"] &
                     alpha == groups[i, "alpha"])
       print(.)
-      return (list(nodeIdx = p$data$node[p$data$label %in% .$taxa ],
-                   col = groups[i, "col"],
-                   size = groups[i, "size"],
-                   alpha = groups[i, "alpha"]))
+      ret <- p$data
+      ret$selected = FALSE
+      ret$col = ret$size = ret$alpha = rep(NA, nrow(ret))
+      nodeIdx = p$data$node[p$data$label %in% .$taxa ]
+      ret$selected[nodeIdx] = TRUE
+      ret$col[nodeIdx] = groups[i, "col"]
+      ret$size[nodeIdx] = groups[i, "size"]
+      ret$alpha[nodeIdx] = groups[i, "alpha"]
+      return (ret)
     }
-    if (nrow(groups) == 1) {
-      aesList[[1]] <- extractAes(dd, groups, p, 1)
-      p <- p + 
-        geom_point2(aes(subset = (node %in% aesList[[1]]$nodeIdx), 
-                        col = aesList[[1]]$col, 
-                        size = aesList[[1]]$size,
-                        alpha = aesList[[1]]$alpha))
-    } else if (nrow(groups) == 2) {
-      aesList[[1]] <- extractAes(dd, groups, p, 1)
-      aesList[[2]] <- extractAes(dd, groups, p, 2)
-      p <- p + 
-        geom_point2(aes(subset = (node %in% aesList[[1]]$nodeIdx), 
-                        col = aesList[[1]]$col, 
-                        size = aesList[[1]]$size,
-                        alpha = aesList[[1]]$alpha)) +
-        geom_point2(aes(subset = (node %in% aesList[[2]]$nodeIdx), 
-                        col = aesList[[2]]$col, 
-                        size = aesList[[2]]$size,
-                        alpha = aesList[[2]]$alpha))
-    } else if (nrow(groups) == 3) {
-      aesList[[1]] <- extractAes(dd, groups, p, 1)
-      aesList[[2]] <- extractAes(dd, groups, p, 2)
-      aesList[[3]] <- extractAes(dd, groups, p, 3)
-      p <- p + 
-        geom_point2(aes(subset = (node %in% aesList[[1]]$nodeIdx), 
-                        col = aesList[[1]]$col, 
-                        size = aesList[[1]]$size,
-                        alpha = aesList[[1]]$alpha)) +
-        geom_point2(aes(subset = (node %in% aesList[[2]]$nodeIdx), 
-                        col = aesList[[2]]$col, 
-                        size = aesList[[2]]$size,
-                        alpha = aesList[[2]]$alpha)) +
-        geom_point2(aes(subset = (node %in% aesList[[3]]$nodeIdx), 
-                        col = aesList[[3]]$col, 
-                        size = aesList[[3]]$size,
-                        alpha = aesList[[3]]$alpha))    
-    } else {
-      warning("Only the fist 3 aes themes are implemented")
-      aesList[[1]] <- extractAes(dd, groups, p, 1)
-      aesList[[2]] <- extractAes(dd, groups, p, 2)
-      aesList[[3]] <- extractAes(dd, groups, p, 3)
-      p <- p + 
-        geom_point2(aes(subset = (node %in% aesList[[1]]$nodeIdx), 
-                        col = aesList[[1]]$col, 
-                        size = aesList[[1]]$size,
-                        alpha = aesList[[1]]$alpha)) +
-        geom_point2(aes(subset = (node %in% aesList[[2]]$nodeIdx), 
-                        col = aesList[[2]]$col, 
-                        size = aesList[[2]]$size,
-                        alpha = aesList[[2]]$alpha)) +
-        geom_point2(aes(subset = (node %in% aesList[[3]]$nodeIdx), 
-                        col = aesList[[3]]$col, 
-                        size = aesList[[3]]$size,
-                        alpha = aesList[[3]]$alpha))  
+    cmd <- c('p <- p ', rep('', nrow(groups)))
+    for (i in 1:nrow(groups)) {
+      assign(sprintf("dat%d", i), extractAes(dd, groups, p, i))
+      cmd[i+1] <- (sprintf(" + geom_point2(data = dat%d,
+                           aes(subset = selected,
+                               col = col, 
+                               size = size,
+                               alpha = alpha))", i))
     }
-    print(aesList)
-    print(p)
-    # dd %>% group_by(size, col, alpha) %>% do({
-    #   nodeIdx <- p$data$node[p$data$label %in% .$taxa ]
-    #   col_ = .$col[1]
-    #   size_ = .$size[1]
-    #   alpha_ = .$alpha[1]
-    #   p <<-       p + 
-    #            geom_point2(aes(subset = (node %in% nodeIdx), 
-    #                     col = col_, 
-    #                     size = size_,
-    #                     alpha = alpha_))
-    # 
-    #       cat("highlight", nodeIdx, " with ", col_, size_, alpha_, "\n")
-    #       print(p)
-    #       data.frame()
-    #     })
+    eval(parse(text = (paste(cmd, collapse = ''))))
     p <- p + scale_size_identity() + scale_alpha_identity() + scale_color_identity()
   }
   p <- p + ggtitle(title) + theme(plot.title = element_text(hjust = 0.5));
@@ -181,36 +123,27 @@ drawPhyloTree <- function(taxa, highlight = NULL, title = NULL) {
 }
 
 if (FALSE) {
+  library(cowplot)
   load("~/Downloads/pvals.RData")
   str(as.data.frame(all_taxa_df))
   all_taxa_df <- all_taxa_df[!duplicated(all_taxa_df),]
   plots <- lapply(seq_along(pvals), function(i) {
-    # plots <- lapply(seq(2), function(i) {
+  #plots <- lapply(seq(2), function(i) {
     print(i)
     p <- pvals[[i]]
-    # if (i != ) {
-    #   highlight = data.frame(taxa = names(p [ p < 0.05 & !is.na(p)]),
-    #                          col = "red", alpha = .6, size = 5)
-    #   drawPhyloTree(taxa = as.data.frame(all_taxa_df),
-    #                 highlight = highlight,
-    #                 title = fn[i, 1])
-    # } else {
     highlight = data.frame(taxa = names(p [ p < 0.05 & !is.na(p)]),
                            col = "red", alpha = .6, size = 5)
     highlight$col[highlight$taxa %in%
-                    c("s__Faecalibacterium_prausnitzii",
-                      "s__Holdemania_filiformis",
-                      "s__Bacteroides_thetaiotaomicron")] = "blue"
-    highlight$size[highlight$taxa %in%
-                     c("s__Faecalibacterium_prausnitzii",
-                       "s__Holdemania_filiformis",
-                       "s__Bacteroides_thetaiotaomicron")] = 6
-    
+                    c("s__Faecalibacterium_prausnitzii")] = "blue"
+    highlight$col[highlight$taxa %in%
+                    c("s__Holdemania_filiformis")] = "green"
+    highlight$col[highlight$taxa %in%
+                    c("s__Bacteroides_thetaiotaomicron")] = "yellow"
+
     drawPhyloTree(taxa = as.data.frame(all_taxa_df),
                   highlight = highlight,
-                  title = fn[i, 1])
-    # }
+                  title = fn[i])
   })  
   plots2 <- plot_grid(plotlist = plots, ncol = 2)
-  ggsave("plot.findings.t5.pdf", plots2, width = 8, height = 16)
+  ggsave("plot.findings.scale.t5.pdf", plots2, width = 8, height = 16)
 }

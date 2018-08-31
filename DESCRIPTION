@@ -1,11 +1,11 @@
 Package: mbTest
 Type: Package
-Title: What the package does (short line)
+Title: Microbiome Differential Abundance Analysis
 Version: 1.0
 Date: 2018-08-23
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Qiwei Li <qiwei.li@swmed.edu>, Xiaowei Zhan <xiaowei.zhan@swmed.edu>
+Maintainer: Qiwei Li <qiwei.li@swmed.edu>
+Description: Differential abundance analysis for metagenomic sequence data
+License: GPL-3
 Imports: Rcpp (>= 0.12.17)
 LinkingTo: Rcpp, RcppArmadillo

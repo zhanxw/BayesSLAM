@@ -1,12 +1,17 @@
-#include <RcppArmadillo.h>
-// #include <RcppArmadilloExtensions/sample.h>
+ #include <RcppArmadillo.h>
+//#include <RcppArmadilloExtensions/sample.h>
+
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 
-#include "common.h"
+static double norm_rs(double a, double b);
+static double half_norm_rs(double a, double b);
+static double unif_rs(double a, double b);
+static double exp_rs(double a, double b);
+static double rnorm_trunc(double mu, double sigma, double lower, double upper);
 
 // [[Rcpp::export]]
-Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, IntegerMatrix S, bool aggregate, bool fold_change, NumericMatrix b, NumericVector b_0) {
+Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, IntegerMatrix S, bool aggregate, bool store) {
   // Read basic information from the data
   int n = Y.nrow();
   int p = Y.ncol();
@@ -26,8 +31,10 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
   // For simulated data
   double a_0 = 2.0;
   double a = 2.0;
-  double h_0 = 10;
-  double h = 10;
+  double b_0 = 1.0;
+  double b = 1.0;
+  double h_0 = 1000;
+  double h = 1000;
   
   // Set algorithm settings
   int burn = iter*0.5;
@@ -37,14 +44,17 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
   double loga_upp = 10.0;
   
   // Set temporary variables
-  int it, i, ii, j, jj, k, e, gamma_temp, count_temp, count_temp_2;
+  int it, i, ii, j, jj, k, e, gamma_temp, count_temp, count_temp_2, count_2;
   int count = 0;
   double hastings, temp, temp_2, alpha_temp;
   double accept_A = 0;
   double accept_gamma = 0;
+  IntegerMatrix Y_ext(n, p + p_ext);
   IntegerVector Y_sum(n);
   NumericVector A_sum(n);
+  NumericVector s(n);
   IntegerVector nk(K);
+  IntegerVector flag(p + p_ext);
   IntegerVector gamma(p + p_ext);
   NumericVector gamma_ppi(p + p_ext);
   double gamma_sum = 0;
@@ -54,6 +64,10 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
   NumericMatrix logafc(iter - burn, p + p_ext);
   
   // Initialization
+  for(i = 0; i < n; i++)
+  {
+    s(i) = 1;
+  }
   for(k = 0; k < K; k++)
   {
     nk(k) = 0;
@@ -68,6 +82,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
     }
     for(i = 0; i < n; i++)
     {
+      Y_ext(i, j) = Y(i, j);
       A(i, j) = 1;
       A_mean(i, j) = 0;
       Y_sum(i) = Y_sum(i) + Y(i, j);
@@ -101,8 +116,28 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
           else
           {
             A(i, p + j) = A(i, p + j) + A(i, S(j, jj) - 1);
+            Y_ext(i, p + j) = Y_ext(i, p + j) + Y_ext(i, S(j, jj) - 1);
           }
         }
+      }
+    }
+  }
+  for(j = 0; j < p + p_ext; j++)
+  {
+    for(k = 0; k < K; k++)
+    {
+      count_2 = 0;
+      for(i = 0; i < n; i++)
+      {
+        if(z(i) == k && Y_ext(i, j) != 0)
+        {
+          count_2++;
+        }
+      }
+      if(count_2 < 2)
+      {
+        flag(j) = 1;
+        break;
       }
     }
   }
@@ -134,7 +169,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
               }
             }
             temp = temp - temp_2*temp_2/(n + 1/h_0);
-            hastings = hastings - (a_0 + n*0.5)*log(b_0(j) + temp*0.5);
+            hastings = hastings - (a_0 + n*0.5)*log(b_0 + temp*0.5);
             temp = 0;
             temp_2 = 0;
             for(ii = 0; ii < n; ii++)
@@ -143,7 +178,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
               temp_2 = temp_2 + log(A(ii, j));
             }
             temp = temp - temp_2*temp_2/(n + 1/h_0);
-            hastings = hastings + (a_0 + n*0.5)*log(b_0(j) + temp*0.5);
+            hastings = hastings + (a_0 + n*0.5)*log(b_0 + temp*0.5);
           }
           else
           {
@@ -158,7 +193,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
               }
             }
             temp = temp - temp_2*temp_2/(nk(z(i)) + 1/h);
-            hastings = hastings - (a + nk(z(i))*0.5)*log(b(z(i), j) + temp*0.5);
+            hastings = hastings - (a + nk(z(i))*0.5)*log(b + temp*0.5);
             temp = 0;
             temp_2 = 0;
             for(ii = 0; ii < n; ii++)
@@ -170,7 +205,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
               }
             }
             temp = temp - temp_2*temp_2/(nk(z(i)) + 1/h);
-            hastings = hastings + (a + nk(z(i))*0.5)*log(b(z(i), j) + temp*0.5);
+            hastings = hastings + (a + nk(z(i))*0.5)*log(b + temp*0.5);
           }
           if (hastings >= log(double(rand()%10001)/10000))
           {
@@ -223,7 +258,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
           temp_2 = temp_2 + log(A(ii, j));
         }
         temp = temp - temp_2*temp_2/(n + 1/h_0);
-        hastings = hastings + (-log(n*h_0 + 1)*0.5 + lgamma(a_0 + n*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + n*0.5)*log(b_0(j) + temp*0.5));
+        hastings = hastings + (-log(n*h_0 + 1)*0.5 + lgamma(a_0 + n*0.5) - lgamma(a_0) + a_0*log(b_0) - (a_0 + n*0.5)*log(b_0 + temp*0.5));
         for(k = 0; k < K; k++)
         {
           temp = 0;
@@ -237,7 +272,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
             }
           }
           temp = temp - temp_2*temp_2/(nk(k) + 1/h);
-          hastings = hastings - (-log(nk(k)*h + 1)*0.5 + lgamma(a + nk(k)*0.5) - lgamma(a) + a*log(b(k, j)) - (a + nk(k)*0.5)*log(b(k, j) + temp*0.5));
+          hastings = hastings - (-log(nk(k)*h + 1)*0.5 + lgamma(a + nk(k)*0.5) - lgamma(a) + a*log(b) - (a + nk(k)*0.5)*log(b + temp*0.5));
         }
       }
       else // Add
@@ -256,7 +291,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
             }
           }
           temp = temp - temp_2*temp_2/(nk(k) + 1/h);
-          hastings = hastings + (-log(nk(k)*h + 1)*0.5 + lgamma(a + nk(k)*0.5) - lgamma(a) + a*log(b(k, j)) - (a + nk(k)*0.5)*log(b(k, j) + temp*0.5));
+          hastings = hastings + (-log(nk(k)*h + 1)*0.5 + lgamma(a + nk(k)*0.5) - lgamma(a) + a*log(b) - (a + nk(k)*0.5)*log(b + temp*0.5));
         }
         temp = 0;
         temp_2 = 0;
@@ -266,7 +301,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
           temp_2 = temp_2 + log(A(ii, j));
         }
         temp = temp - temp_2*temp_2/(n + 1/h_0);
-        hastings = hastings - (-log(n*h_0 + 1)*0.5 + lgamma(a_0 + n*0.5) - lgamma(a_0) + a_0*log(b_0(j)) - (a_0 + n*0.5)*log(b_0(j) + temp*0.5));
+        hastings = hastings - (-log(n*h_0 + 1)*0.5 + lgamma(a_0 + n*0.5) - lgamma(a_0) + a_0*log(b_0) - (a_0 + n*0.5)*log(b_0 + temp*0.5));
       }
       
       if (hastings >= log(double(rand()%10001)/10000))
@@ -304,7 +339,7 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
         for(i = 0; i < n; i++)
         {
           A_mean(i, j) = A_mean(i, j) + A(i, j);
-          if(fold_change)
+          if(store)
           {
             if(z(i) == 0)
             {
@@ -318,9 +353,9 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
             }
           }
         }
-        if(fold_change)
+        if(store)
         {
-          logafc(it - burn - 1, j) = log(temp_2/count_temp_2) - log(temp/count_temp);
+          logafc(it - burn - 1, j) = log(temp_2) - log(count_temp_2) - log(temp) + log(count_temp);
         }
       }
     }
@@ -362,12 +397,153 @@ Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, Intege
     }
   }
   */
-  if(fold_change)
+  if(store)
   {
-    return Rcpp::List::create(Rcpp::Named("logafc") = logafc, Rcpp::Named("A_mean") = A_mean, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("accept_A") = accept_A, Rcpp::Named("accept_gamma") = accept_gamma);
+    return Rcpp::List::create(Rcpp::Named("flag") = flag, Rcpp::Named("s") = s, Rcpp::Named("logafc") = logafc, Rcpp::Named("A_mean") = A_mean, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("accept_A") = accept_A, Rcpp::Named("accept_gamma") = accept_gamma);
   }
   else
   {
-    return Rcpp::List::create(Rcpp::Named("A_mean") = A_mean, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("accept_A") = accept_A, Rcpp::Named("accept_gamma") = accept_gamma);
+    return Rcpp::List::create(Rcpp::Named("flag") = flag, Rcpp::Named("A_mean") = A_mean, Rcpp::Named("gamma_ppi") = gamma_ppi, Rcpp::Named("gamma_sum") = gamma_sum_store, Rcpp::Named("accept_A") = accept_A, Rcpp::Named("accept_gamma") = accept_gamma);
   }
+}
+
+double rnorm_trunc(double mu, double sigma, double lower, double upper)
+{
+  int change;
+  double a, b;
+  double logt1 = log(0.150), logt2 = log(2.18), t3 = 0.725;
+  double z, tmp, lograt;
+  
+  change = 0;
+  a = (lower - mu)/sigma;
+  b = (upper - mu)/sigma;
+  
+  // First scenario
+  if( (a == R_NegInf)||(b == R_PosInf))
+  {
+    if(a == R_NegInf)
+    {
+      change = 1;
+      a = -b;
+      b = R_PosInf;
+    }
+    // The two possibilities for this scenario
+    if(a <= 0.45) z = norm_rs(a, b);
+    else z = exp_rs(a, b);
+    if(change) z = -z;
+  }
+  
+  // Second scenario
+  else if((a*b) <= 0.0)
+  {
+    // The two possibilities for this scenario
+    if((R::dnorm(a, 0.0, 1.0,1.0) <= logt1) || (R::dnorm(b, 0.0, 1.0, 1.0) <= logt1))
+    {
+      z = norm_rs(a, b);
+    }
+    else z = unif_rs(a,b);
+  }
+  
+  // Third scenario
+  else
+  {
+    if(b < 0)
+    {
+      tmp = b; b = -a; a = -tmp; change = 1;
+    }
+    
+    lograt = R::dnorm(a, 0.0, 1.0, 1.0) - R::dnorm(b, 0.0, 1.0, 1.0);
+    if(lograt <= logt2)
+    {
+      z = unif_rs(a,b);
+    }
+    else if((lograt > logt1)&&(a < t3))
+    {
+      z = half_norm_rs(a,b);
+    }
+    else
+    {
+      z = exp_rs(a,b);
+    }
+    if(change)
+    {
+      z = -z;
+    }
+  }
+  double output;
+  output = sigma*z + mu;
+  return (output);
+}
+
+double exp_rs(double a, double b)
+{
+  double  z, u, rate;
+  rate = 1/a;
+  
+  // Generate a proposal on (0, b-a)
+  z = R::rexp(rate);
+  while(z > (b-a))
+  {
+    z = R::rexp(rate);
+  }
+  u = R::runif(0.0, 1.0);
+  
+  while( log(u) > (-0.5*z*z))
+  {
+    z = R::rexp(rate);
+    while(z > (b-a))
+    {
+      z = R::rexp(rate);
+    }
+    u = R::runif(0.0,1.0);
+  }
+  return(z+a);
+}
+
+double unif_rs(double a, double b)
+{
+  double xstar, logphixstar, x, logu;
+  
+  // Find the argmax (b is always >= 0)
+  // This works because we want to sample from N(0,1)
+  if(a <= 0.0) 
+  {
+    xstar = 0.0;
+  }
+  else 
+  {
+    xstar = a;
+  }
+  logphixstar = R::dnorm(xstar, 0.0, 1.0, 1.0);
+  
+  x = R::runif(a, b);
+  logu = log(R::runif(0.0, 1.0));
+  while(logu > (R::dnorm(x, 0.0, 1.0,1.0) - logphixstar))
+  {
+    x = R::runif(a, b);
+    logu = log(R::runif(0.0, 1.0));
+  }
+  return x;
+}
+
+double half_norm_rs(double a, double b)
+{
+  double x;
+  x = fabs(norm_rand());
+  while((x<a)||(x>b)) 
+  {
+    x = fabs(norm_rand());
+  }
+  return x;
+}
+
+double norm_rs(double a, double b)
+{
+  double x;
+  x = Rf_rnorm(0.0, 1.0);
+  while((x < a)||(x > b)) 
+  {
+    x = norm_rand();
+  }
+  return x;
 }
