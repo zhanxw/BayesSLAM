@@ -12,7 +12,7 @@
 #' prefix = system.file("extdata", package = "BayesSLAM")
 #' load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' countsTable <- otuTable
-#' # otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
+#' otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
 #' otu.tab.rff <- countsTable
 #' unifracs = computeUnifrac(otu.tab.rff)
 #'    

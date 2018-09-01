@@ -4,10 +4,10 @@
 \alias{computeMetaphlanTree}
 \title{Compute a subset of tree for a count table}
 \usage{
-computeMetaphlanTree(otu.tab.rff, tree = NULL)
+computeMetaphlanTree(taxa, tree = NULL)
 }
 \arguments{
-\item{otu.tab.rff}{counts table (taxa by sample), provided by MetaPhlAn}
+\item{taxa}{character vector (e.g. rownames of otu_table, provided by MetaPhlAn)}
 
 \item{tree}{R phylo object}
 }

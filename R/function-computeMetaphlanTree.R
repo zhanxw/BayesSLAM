@@ -3,7 +3,7 @@
 #' 
 #' Based on a MetaPhlAn tree, only keep the tip nodes that appear in the count table row names.
 #'
-#' @param otu.tab.rff counts table (taxa by sample), provided by MetaPhlAn
+#' @param taxa character vector (e.g. rownames of otu_table, provided by MetaPhlAn)
 #' @param tree R phylo object
 #'
 #' @return a phylo tree
@@ -15,7 +15,7 @@
 #' load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' countsTable <- otuTable
 #' tree <- computeMetaphlanTree(countsTable)
-computeMetaphlanTree <- function(otu.tab.rff, tree = NULL) {
+computeMetaphlanTree <- function(taxa, tree = NULL) {
   if (is.null(tree)) {
   # ot <- otu.tab.rff
   # Calculate the UniFracs
@@ -32,6 +32,6 @@ computeMetaphlanTree <- function(otu.tab.rff, tree = NULL) {
   last_level <- do.call(c, last_level)
   tree$tip.label <- last_level
   
-  tree <- ape::drop.tip(tree, setdiff(tree$tip.label, rownames(otu.tab.rff)))
+  tree <- ape::drop.tip(tree, setdiff(tree$tip.label, taxa))
   tree
 }
