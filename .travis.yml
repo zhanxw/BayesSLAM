@@ -18,13 +18,13 @@ warnings_are_errors: false
 
 #r_binary_packages:
 
-r_packages
+r_packages:
  - ggplot2
  - ape
  - lattice
  - zoo
  - GUniFrac
-bioc_packages
+bioc_packages:
  - curatedMetagenomicData
  - phyloseq
  - ggtree
