@@ -13,11 +13,16 @@ suppressPackageStartupMessages(library(ggtree))
 #' @param taxa phyloseq taxonomyTable class or a data frame
 #' @param highlight a vector of node names to be colored, e.g. "k__Bacteria", 
 #'                  or a data frame with optionally columns (col, size, alpha)
+#' @param title Title for the plot
 #'
 #' @return an ggplot2 object
 #' @export
 #'
 #' @examples
+#' library(curatedMetagenomicData)
+#' library(phyloseq)
+#' library(ggtree)
+#' library(ggplot2)
 #' res <- curatedMetagenomicData("Castro-*metaphlan*", dryrun=FALSE) #one dataset
 #' taxa<-tax_table(ExpressionSet2phyloseq(res[[1]]))
 #' drawPhyloTree(taxa)
@@ -44,7 +49,7 @@ drawPhyloTree <- function(taxa, highlight = NULL, title = NULL) {
   root = data.tree::as.Node(taxa)
   
   # Convert to Newick format
-  root.newick <- ToNewick(root,heightAttribute = NULL)
+  root.newick <- data.tree::ToNewick(root,heightAttribute = NULL)
   # Codes below are for customizing tree branches lengths
   # root.newick <- ToNewick(root, heightAttribute = function(x){
   #   #print(str(x$name)); 
@@ -59,7 +64,7 @@ drawPhyloTree <- function(taxa, highlight = NULL, title = NULL) {
   cat(root.newick, file = tmp.fn)
   
   # Read the read into the phylo format
-  tree <- read.tree(tmp.fn)
+  tree <- ape::read.tree(tmp.fn)
   # Plot the tree
   p <- ggtree(tree, layout = "circular")
   if (!is.null(highlight)) {

@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // dm_model_estimator
 Rcpp::List dm_model_estimator(IntegerMatrix Y, IntegerVector z, int iter, IntegerMatrix S, bool aggregate, bool store);
-RcppExport SEXP _mbTest_dm_model_estimator(SEXP YSEXP, SEXP zSEXP, SEXP iterSEXP, SEXP SSEXP, SEXP aggregateSEXP, SEXP storeSEXP) {
+RcppExport SEXP _BayesSLAM_dm_model_estimator(SEXP YSEXP, SEXP zSEXP, SEXP iterSEXP, SEXP SSEXP, SEXP aggregateSEXP, SEXP storeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -24,7 +24,7 @@ END_RCPP
 }
 // zinb_model_estimator
 Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector s, int iter, bool DPP, IntegerMatrix S, bool aggregate, bool store, double b, double h);
-RcppExport SEXP _mbTest_zinb_model_estimator(SEXP YSEXP, SEXP zSEXP, SEXP sSEXP, SEXP iterSEXP, SEXP DPPSEXP, SEXP SSEXP, SEXP aggregateSEXP, SEXP storeSEXP, SEXP bSEXP, SEXP hSEXP) {
+RcppExport SEXP _BayesSLAM_zinb_model_estimator(SEXP YSEXP, SEXP zSEXP, SEXP sSEXP, SEXP iterSEXP, SEXP DPPSEXP, SEXP SSEXP, SEXP aggregateSEXP, SEXP storeSEXP, SEXP bSEXP, SEXP hSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -44,12 +44,12 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mbTest_dm_model_estimator", (DL_FUNC) &_mbTest_dm_model_estimator, 6},
-    {"_mbTest_zinb_model_estimator", (DL_FUNC) &_mbTest_zinb_model_estimator, 10},
+    {"_BayesSLAM_dm_model_estimator", (DL_FUNC) &_BayesSLAM_dm_model_estimator, 6},
+    {"_BayesSLAM_zinb_model_estimator", (DL_FUNC) &_BayesSLAM_zinb_model_estimator, 10},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_mbTest(DllInfo *dll) {
+RcppExport void R_init_BayesSLAM(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

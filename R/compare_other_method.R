@@ -8,25 +8,37 @@
 #' @param cov matrix, can be NULL
 #' @param taxaTable phyloseq taxonomyTable (created by tax_table) 
 #'
-#' @return a list of pvalue and detail. The detail element stores original results
+#' @return a list of pvalue, detail and timing. The detail element stores original results
 #' @export
 #'
 #' @examples
-#' load("~/Dropbox/xiaowei/data/real_data/curatedMetagenomicData.Rdata", verbose = T)
 #'  ## two groups
-#' otuTable <- otu_list[[1]]
-#' taxaTable <- tax_list[[1]]
-#' pheno <- z_list[[1]]
+#' if (FALSE) {
+#'   load("~/Dropbox/xiaowei/data/real_data/curatedMetagenomicData.Rdata", verbose = TRUE)
+#'   otuTable <- otu_list[[1]]
+#'   taxaTable <- tax_list[[1]]
+#'   pheno <- z_list[[1]]
+#' } else {
+#'   prefix = system.file("extdata", package = "BayesSLAM")
+#'   load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
+#' }
 #' countsTable <- otuTable
 #' res <- mbTest("permanova", otuTable, pheno, NULL, taxaTable)
 #' res <- mbTest("permanovaG", otuTable, pheno, NULL, taxaTable)
 #' res <- mbTest("mircat", otuTable, pheno, NULL, taxaTable)
 #' res <- mbTest("qcat", otuTable, pheno, NULL, taxaTable)
 #' res <- mbTest("mispu", otuTable, pheno, NULL, taxaTable)
+#' 
 #' ## three groups
-#' otuTable <- otu_list[[15]]
-#' taxaTable <- tax_list[[15]]
-#' pheno <- z_list[[15]]
+#' if (FALSE) {
+#'   load("~/Dropbox/xiaowei/data/real_data/curatedMetagenomicData.Rdata", verbose = TRUE)
+#'   otuTable <- otu_list[[15]]
+#'   taxaTable <- tax_list[[15]]
+#'   pheno <- z_list[[15]]
+#' } else {
+#'   prefix = system.file("extdata", package = "BayesSLAM")
+#'   load(file.path(prefix, "ZellerG_2014.Rdata"))
+#' }
 #' countsTable <- otuTable
 #' res <- mbTest("anova", otuTable, pheno, NULL, NULL)
 #' res <- mbTest("kruskal", otuTable, pheno, NULL, NULL)
@@ -224,7 +236,7 @@ mbTest <- function(testName = c(
     #countsTable <- otuTable
     # Rarefaction
     otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
-    source("function-computeUnifrac.R")
+    # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
     dw <- unifracs[, , "d_1"] # Weighted UniFrac
     du <- unifracs[, , "d_UW"] # Unweighted UniFrac
@@ -239,10 +251,10 @@ mbTest <- function(testName = c(
     #countsTable <- otuTable
     # Rarefaction
     otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
-    source("function-computeUnifrac.R")
+    # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
-    unifracs <-
-      GUniFrac(t(otu.tab.rff), tree, alpha = c(0, 0.5, 1))$unifracs
+    # unifracs <-
+    #   GUniFrac(t(otu.tab.rff), tree, alpha = c(0, 0.5, 1))$unifracs
     dw <- unifracs[, , "d_1"] # Weighted UniFrac
     du <- unifracs[, , "d_UW"] # Unweighted UniFrac
     dv <- unifracs[, , "d_VAW"] # Variance adjusted weighted UniFrac
@@ -255,7 +267,7 @@ mbTest <- function(testName = c(
     library(MiRKAT)
     # Rarefaction
     otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
-    source("function-computeUnifrac.R")
+    # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
     D.weighted = unifracs[, , "d_1"]
     D.unweighted = unifracs[, , "d_UW"]
@@ -274,14 +286,14 @@ mbTest <- function(testName = c(
   } else if (testName == "qcat") {
     library(miLineage)
     ## TODO: QCAT support continuous outcomes only?
-    ret$detail <- QCAT(t(countsTable), matrix(as.numeric(pheno), nc = 1), 1, NULL, fdr.alpha = 0.05)
+    ret$detail <- QCAT(t(countsTable), matrix(as.numeric(pheno), ncol = 1), 1, NULL, fdr.alpha = 0.05)
     ret$p.value <-  ret$detail$pval
   } else if (testName == "zidgm") {
     library(miLineage)
     ret$detail <- ZIGDM(
       t(countsTable),
       NULL, # cov related to presence-absence
-      matrix(as.numeric(pheno), nc = 1), # cov related to mean abundance
+      matrix(as.numeric(pheno), ncol = 1), # cov related to mean abundance
       NULL, # cov related to dispersion 
       test.type = "Mean",
       1,
@@ -291,19 +303,11 @@ mbTest <- function(testName = c(
     )
     ret$p.value = ret$detail$global.pval
   } else if (testName == "mispu") {
+    library(GUniFrac)
     library(MiSPU)
     otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
     
-    tree.file <- system.file("extdata/metaphlan2_selected.tree.reroot.nwk.bz2", package = "curatedMetagenomicData")
-    stopifnot(file.exists(tree.file))
-    tree <- read.tree(tree.file)
-    last_level <- 
-      lapply(tree$tip.label, function(x){tmp <- strsplit(x, "\\|")[[1]]; 
-      if(length(tmp) == 1) {NA} else{tmp[length(tmp)-1]}})
-    last_level <- do.call(c, last_level)
-    tree$tip.label <- last_level
-    
-    tree <- drop.tip(tree, setdiff(tree$tip.label, rownames(ot)))
+    tree <- computeMetaphlanTree(otu.tab.rff)
     otu.tab.rff <- otu.tab.rff [rownames(otu.tab.rff) %in% tree$tip.label, ]
     
     ret$detail = MiSPU(
@@ -320,18 +324,6 @@ mbTest <- function(testName = c(
   endTime <- Sys.time()
   ret$timing <- difftime(endTime, startTime, units = "secs")
   ret
-}
-
-if (FALSE) {
-  ## append taxonomy info
-  setwd("~/Dropbox/xiaowei/data/real_data/")
-  load("curatedMetagenomicData.Rdata", verbose = T)
-  library(phyloseq)
-  str(tax_list[[14]])
-  head(tax_list[[14]]@.Data)
-  str(Y_list[[15]])
-  tax_list[[15]] <- tax_list[[14]] ## change this
-  str(tax_list[[15]])
 }
 
 # https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-017-0237-y

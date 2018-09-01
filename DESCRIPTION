@@ -1,11 +1,13 @@
-Package: mbTest
+Package: BayesSLAM
 Type: Package
-Title: Microbiome Differential Abundance Analysis
+Title: Bayes SLAM (Bayesian Statistical Learning Approach for Microbiome)
 Version: 1.0
 Date: 2018-08-23
-Author: Qiwei Li <qiwei.li@swmed.edu>, Xiaowei Zhan <xiaowei.zhan@swmed.edu>
+Author: Qiwei Li <qiwei.li@swmed.edu>, Shuang Jiang <shuangj@mail.smu.edu>, Xiaowei Zhan <xiaowei.zhan@swmed.edu>
 Maintainer: Qiwei Li <qiwei.li@swmed.edu>
-Description: Differential abundance analysis for metagenomic sequence data
-License: GPL-3
-Imports: Rcpp (>= 0.12.17)
+Description: Differential abundance analysis for metagenomic sequence data.
+License: GPL-3 + file LICENSE
+Imports: Rcpp (>= 0.12.17), data.tree
+Requires: phyloseq, ggtree, ggplot2, lattice, zoo, GUniFrac, ape
 LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 6.0.1

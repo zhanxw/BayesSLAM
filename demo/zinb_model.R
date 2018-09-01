@@ -1,7 +1,7 @@
 # ============================================================================================
 # Set working directory
 # setwd("~/Dropbox/xiaowei");
-prefix = system.file("", package = "mbTest")
+prefix = system.file("extdata", package = "BayesSLAM")
 
 # Load library
 library(ggplot2);
@@ -25,7 +25,7 @@ if (FALSE) {
   otu <- otu_list[["TettAJ_2016"]];   # Abundance table at all taxonomic levels (682 speices, 93 samples in this case)
   tax <- tax_list[["TettAJ_2016"]];   # Taxonomy table
   z <- as.integer(z_list[["TettAJ_2016"]]) - 1;   # Group indicator (49 control and 44 experimental samples in this case)
-  save(list = c("otu", "tax", "z"), file = "data/TettAJ_2016.Rdata")
+  save(list = c("otu", "tax", "z"), file = "TettAJ_2016.Rdata")
 } else {
   print(prefix)
   print

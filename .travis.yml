@@ -1,0 +1,27 @@
+language: r
+cache: packages
+
+# enable to use bioconductor packges
+bioc_required: yes
+use_bioc: yes
+
+# r: bioc-release
+
+r:
+  - oldrel
+  - release
+  - devel
+  - bioc-release
+
+# Do not be strict when checking our package
+warnings_are_errors: false
+
+r_binary_packages:
+ - phyloseq
+ - ggtree
+ - ggplot2
+ - ape
+ - lattice
+ - zoo
+ - GUniFrac
+ - curatedMetagenomicData

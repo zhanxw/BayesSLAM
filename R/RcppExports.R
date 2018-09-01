@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 dm_model_estimator <- function(Y, z, iter, S, aggregate, store) {
-    .Call(`_mbTest_dm_model_estimator`, Y, z, iter, S, aggregate, store)
+    .Call('_BayesSLAM_dm_model_estimator', PACKAGE = 'BayesSLAM', Y, z, iter, S, aggregate, store)
 }
 
 zinb_model_estimator <- function(Y, z, s, iter, DPP, S, aggregate, store, b, h) {
-    .Call(`_mbTest_zinb_model_estimator`, Y, z, s, iter, DPP, S, aggregate, store, b, h)
+    .Call('_BayesSLAM_zinb_model_estimator', PACKAGE = 'BayesSLAM', Y, z, s, iter, DPP, S, aggregate, store, b, h)
 }
 
