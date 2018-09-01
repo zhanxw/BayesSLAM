@@ -2,7 +2,7 @@
 ## @return list pvalue, orig
 #' Unified statistical tests for microbiome data
 #'
-#' @param testName specify the name of the statistical test
+#' @param testName specify the name of a statistical test
 #' @param countsTable OTU feature by sample matrix 
 #' @param pheno vector, factor, 2 or 3 groups
 #' @param cov matrix, can be NULL
@@ -23,11 +23,17 @@
 #'   load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' }
 #' countsTable <- otuTable
-#' res <- mbTest("permanova", otuTable, pheno, NULL, taxaTable)
-#' res <- mbTest("permanovaG", otuTable, pheno, NULL, taxaTable)
-#' res <- mbTest("mircat", otuTable, pheno, NULL, taxaTable)
-#' res <- mbTest("qcat", otuTable, pheno, NULL, taxaTable)
-#' res <- mbTest("mispu", otuTable, pheno, NULL, taxaTable)
+#' res <- slam("anova", otuTable, pheno, NULL, NULL)
+#' res <- slam("kruskal", otuTable, pheno, NULL, NULL)
+#' res <- slam("deseq2", otuTable, pheno, NULL, NULL)
+#' res <- slam("metagenomeSeq", otuTable, pheno, NULL, NULL)
+#' res <- slam("metagenomeSeq.zig", otuTable, pheno, NULL, NULL)
+#'
+#' res <- slam("permanova", otuTable, pheno, NULL, taxaTable)
+#' res <- slam("permanovaG", otuTable, pheno, NULL, taxaTable)
+#' res <- slam("mircat", otuTable, pheno, NULL, taxaTable)
+#' res <- slam("qcat", otuTable, pheno, NULL, taxaTable)
+#' res <- slam("mispu", otuTable, pheno, NULL, taxaTable)
 #' 
 #' ## three groups
 #' if (FALSE) {
@@ -40,12 +46,10 @@
 #'   load(file.path(prefix, "ZellerG_2014.Rdata"))
 #' }
 #' countsTable <- otuTable
-#' res <- mbTest("anova", otuTable, pheno, NULL, NULL)
-#' res <- mbTest("kruskal", otuTable, pheno, NULL, NULL)
-#' res <- mbTest("deseq2", otuTable, pheno, NULL, NULL)
-#' res <- mbTest("metagenomeSeq", otuTable, pheno, NULL, NULL)
-#' res <- mbTest("metagenomeSeq.zig", otuTable, pheno, NULL, NULL)
-mbTest <- function(testName = c(
+#' res <- slam("anova", otuTable, pheno, NULL, NULL)
+#' res <- slam("kruskal", otuTable, pheno, NULL, NULL)
+
+slam <- function(testName = c(
   # test all OTUs
   "t", "anova",
   "wilcox", "kruskal",
@@ -62,6 +66,10 @@ mbTest <- function(testName = c(
   countsTable, pheno, cov=NULL, 
   taxaTable = NULL) {
   # check data validity
+  if (!checkPrereq(testName)) {
+    warning("Please install required packages for ", testName)    
+    return (NULL)
+  }
   stopifnot(ncol(countsTable) == length(pheno))
   stopifnot(length(unique(pheno)) >= 2)
   
@@ -307,7 +315,7 @@ mbTest <- function(testName = c(
     library(MiSPU)
     otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
     
-    tree <- computeMetaphlanTree(otu.tab.rff)
+    tree <- computeMetaphlanTree(rownames(otu.tab.rff))
     otu.tab.rff <- otu.tab.rff [rownames(otu.tab.rff) %in% tree$tip.label, ]
     
     ret$detail = MiSPU(
@@ -326,4 +334,48 @@ mbTest <- function(testName = c(
   ret
 }
 
+
+#' Check if the required packages are installed
+#'
+#' @param testName a name of a statistical test
+#'
+#' @return TRUE only all required packages are installed
+#' @export
+#'
+#' @examples
+#' checkPrereq("deseq")
+#' checkPrereq("mispu")
+checkPrereq <- function(testName) {
+  d <- "test package
+t stats
+  anova stats
+  wilcox stats
+  kruskal stats
+  deseq DESeq
+  deseq2 DESeq2
+  edger edgeR
+  metagenomeseq metagenomeSeq
+  metagenomeSeq.zig metagenomeSeq
+  permanova GUniFrac
+  permanovaG GUniFrac
+  mircat MiRKAT
+  qcat miLineage
+  zidgm miLineage
+  mispu MiSPU,GUniFrac"
+  d <- read.table(text = d, header = TRUE, stringsAsFactors = F)
+  if (!testName %in% d$test) {
+    warning("Specified test [", testName, "] is not yet supported.")
+    return(FALSE)
+  }
+  
+  needed.pkg <- strsplit(x = d$package[d$test == testName], ",")[[1]]
+  installed <- installed.packages()
+  isSucc = TRUE
+  for (pkg in needed.pkg) {
+    if (pkg %in% installed[, "Package"]) {next}
+    warning("Please install ", pkg, " in order to use ", testName)
+    isSucc = FALSE
+  }
+  return(isSucc)
+}
 # https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-017-0237-y

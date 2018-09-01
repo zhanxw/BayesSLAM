@@ -16,12 +16,17 @@ r:
 # Do not be strict when checking our package
 warnings_are_errors: false
 
-r_binary_packages:
- - phyloseq
- - ggtree
+#r_binary_packages:
+
+r_packages
  - ggplot2
  - ape
  - lattice
  - zoo
  - GUniFrac
+bioc_packages
  - curatedMetagenomicData
+ - phyloseq
+ - ggtree
+# before_install:
+#  - tlmgr install index

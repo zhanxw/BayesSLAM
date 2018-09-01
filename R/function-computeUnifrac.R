@@ -1,8 +1,10 @@
 #' Compute Unifrac distances using GUnifrac for MetaPhlAn count table
 #'
-#' The tree structure are provided by curatedMetagenomicData package
+#' The default tree structure are provided by curatedMetagenomicData package
 #' 
-#' @param otu.tab.rff a matrix, rownames are metaphlan tip species
+#' @param otu.tab.rff a matrix, rownames are MetaPhlAn tip species
+#' @param tree an R phylo object. If NULL is provided, the default phylo object for MetaPhlAn data is used.
+#' @param alpha weight for the sharing lineages used for calculation of UniFrac distances
 #'
 #' @return a list of UniFrac distance matrix using alpha 0, 0.5 and 1
 #' @export

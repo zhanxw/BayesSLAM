@@ -16,13 +16,16 @@
 #' countsTable <- otuTable
 #' tree <- computeMetaphlanTree(countsTable)
 computeMetaphlanTree <- function(taxa, tree = NULL) {
+  if (class(taxa) != "character") {
+    warning("taxa should be a character vector!")
+  }
   if (is.null(tree)) {
-  # ot <- otu.tab.rff
-  # Calculate the UniFracs
-  # this preprocessed file was in curateMetagenomicData, we save and reuse its copy
-  tree.file <- system.file("extdata/metaphlan2_selected.tree.reroot.nwk.bz2", package = "BayesSLAM")
-  stopifnot(file.exists(tree.file))
-  tree <- ape::read.tree(tree.file)
+    # ot <- otu.tab.rff
+    # Calculate the UniFracs
+    # this preprocessed file was in curateMetagenomicData, we save and reuse its copy
+    tree.file <- system.file("extdata/metaphlan2_selected.tree.reroot.nwk.bz2", package = "BayesSLAM")
+    stopifnot(file.exists(tree.file))
+    tree <- ape::read.tree(tree.file)
   }
   stopifnot(!is.null(tree))
   

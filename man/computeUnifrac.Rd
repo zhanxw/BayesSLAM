@@ -7,13 +7,17 @@
 computeUnifrac(otu.tab.rff, tree = NULL, alpha = c(0, 0.5, 1))
 }
 \arguments{
-\item{otu.tab.rff}{a matrix, rownames are metaphlan tip species}
+\item{otu.tab.rff}{a matrix, rownames are MetaPhlAn tip species}
+
+\item{tree}{an R phylo object. If NULL is provided, the default phylo object for MetaPhlAn data is used.}
+
+\item{alpha}{weight for the sharing lineages used for calculation of UniFrac distances}
 }
 \value{
 a list of UniFrac distance matrix using alpha 0, 0.5 and 1
 }
 \description{
-The tree structure are provided by curatedMetagenomicData package
+The default tree structure are provided by curatedMetagenomicData package
 }
 \examples{
 library(GUniFrac)
