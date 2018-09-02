@@ -13,10 +13,9 @@
 #' prefix = system.file("extdata", package = "BayesSLAM")
 #' load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' countsTable <- otuTable
-#' otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
-#' otu.tab.rff <- countsTable
+#' ## Need to rarefy as UniFrac can be sensitive
+#' otu.tab.rff <- GUniFrac::Rarefy(countsTable)$otu.tab.rff
 #' unifracs = computeUnifrac(otu.tab.rff)
-#'    
 computeUnifrac <- function(otu.tab.rff, tree = NULL, alpha = c(0, 0.5, 1)) {
   if (is.null(tree)) {
     tree <- computeMetaphlanTree(rownames(otu.tab.rff))
