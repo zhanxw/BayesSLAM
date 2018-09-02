@@ -23,7 +23,8 @@ The default tree structure are provided by curatedMetagenomicData package
 prefix = system.file("extdata", package = "BayesSLAM")
 load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 countsTable <- otuTable
-## Need to rarefy as UniFrac can be sensitive
-otu.tab.rff <- GUniFrac::Rarefy(countsTable)$otu.tab.rff
+print("Skip Rarefy for now, but it is needed in read analysis as UniFrac can be sensitive")
+# otu.tab.rff <- GUniFrac::Rarefy(countsTable)$otu.tab.rff
+otu.tab.rff <- countsTable
 unifracs = computeUnifrac(otu.tab.rff)
 }
