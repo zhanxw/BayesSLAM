@@ -20,7 +20,6 @@ a list of UniFrac distance matrix using alpha 0, 0.5 and 1
 The default tree structure are provided by curatedMetagenomicData package
 }
 \examples{
-library(GUniFrac)
 prefix = system.file("extdata", package = "BayesSLAM")
 load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 countsTable <- otuTable

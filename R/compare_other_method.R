@@ -26,6 +26,7 @@
 #' res <- slam("anova", otuTable, pheno, NULL, NULL)
 #' res <- slam("kruskal", otuTable, pheno, NULL, NULL)
 #' res <- slam("deseq2", otuTable, pheno, NULL, NULL)
+#' res <- slam("edger", otuTable, pheno, NULL, NULL)
 #' res <- slam("metagenomeSeq", otuTable, pheno, NULL, NULL)
 #' res <- slam("metagenomeSeq.zig", otuTable, pheno, NULL, NULL)
 #'
@@ -127,13 +128,13 @@ slam <- function(testName = c(
     #taxADF = as(data.frame(as(taxaTable, "matrix")), "AnnotatedDataFrame")
     #dim(taxADF)
     # Initalize the count data sets.
-    cds = newCountDataSet(x, conditions = designfac) 
+    cds = DESeq::newCountDataSet(x, conditions = designfac) 
     # First, estimate size factors, then estimate dispersion.  Size factors
-    cds = estimateSizeFactors(cds)  #, locfunc=genefilter::shorth)
-    sizeFactors(cds)
+    cds = DESeq::estimateSizeFactors(cds)  #, locfunc=genefilter::shorth)
+    DESeq::sizeFactors(cds)
     # Now dispersions Variance estimation, passing along additional options
-    cds = estimateDispersions(cds, fitType = c("local"))
-    res = nbinomTest(cds, levels(designfac)[1], levels(designfac)[2])
+    cds = DESeq::estimateDispersions(cds, fitType = c("local"))
+    res = DESeq::nbinomTest(cds, levels(designfac)[1], levels(designfac)[2])
     ret$detail <- (res)
     ret$p.value = res$pval
   } else if (testName == "deseq2") {
@@ -145,16 +146,17 @@ slam <- function(testName = c(
     #taxaTable = taxaTable[rownames(taxaTable)%in%rownames(countsTable),]
     #dim(taxaTable)
     # Initalize the count data sets.
-    dds <- DESeqDataSetFromMatrix(x, DataFrame(pheno), ~pheno)
-    dds <- DESeq(dds)
+    dds <- DESeq2::DESeqDataSetFromMatrix(x, DataFrame(pheno), ~pheno)
+    dds <- DESeq2::DESeq(dds)
     res <- results(dds)
     ret$detail <- res
     ret$p.value <- res[, "pvalue"]
     names(ret$p.value) <- rownames(res)
   } else if (testName == "edger") {
     library(edgeR)
-    y = DGEList(counts = countsTable, group = pheno)  #, remove.zeros=TRUE)
-    z = edgeR:::calcNormFactors(y, method = "RLE")
+    y = edgeR::DGEList(counts = countsTable, group = pheno)  #, remove.zeros=TRUE)
+    z = edgeR::calcNormFactors(y, method = "RLE")
+    # We make sure edgeR normalization makes sense
     print(z[[2]]$norm.factors);
     z[[2]]$norm.factors <- size_factor_estimator(t(countsTable), method = "RLE");
     print(size_factor_estimator(t(countsTable), method = "RLE"));
@@ -162,9 +164,9 @@ slam <- function(testName = c(
       stop("Something wrong with edgeR::calcNormFactors on this data, non-finite $norm.factors")
     }
     # Estimate dispersions
-    z1 = estimateCommonDisp(z)
-    z2 = estimateTagwiseDisp(z1)
-    et = exactTest(z2)
+    z1 = edgeR::estimateCommonDisp(z)
+    z2 = edgeR::estimateTagwiseDisp(z1)
+    et = edgeR::exactTest(z2)
     ret$detail <- et
     ret$p.value <- et$table$PValue
     names(ret$p.value) <- rownames(et$table)
@@ -184,14 +186,14 @@ slam <- function(testName = c(
     # extraction and relating to taxonomy later on.
     TDF = AnnotatedDataFrame(data.frame(OTUname = rownames(countsTable), row.names =  rownames(countsTable)))
     # Create the metagenomeSeq object
-    MGS = newMRexperiment(counts = OTU, phenoData = ADF, featureData = TDF)
+    MGS = metagenomeSeq::newMRexperiment(counts = OTU, phenoData = ADF, featureData = TDF)
     # Trigger metagenomeSeq to calculate its Cumulative Sum scaling factor.
-    MGS = cumNorm(MGS)
+    MGS = metagenomeSeq::cumNorm(MGS)
     # fit = fitZig(MGS, model.matrix(~pheno))
     # # You need to specify all OTUs to get the full table from MRfulltable.
     # x = MRfulltable(fit, number = nrow(assayData(MGS)$counts))
     # 
-    fit = fitFeatureModel(MGS, model.matrix(~pheno))
+    fit = metagenomeSeq::fitFeatureModel(MGS, model.matrix(~pheno))
     ret$detail <- fit
     ret$p.value <- fit$pvalues
   } else if (testName == "metagenomeSeq.zig") {
@@ -207,15 +209,15 @@ slam <- function(testName = c(
     # extraction and relating to taxonomy later on.
     TDF = AnnotatedDataFrame(data.frame(OTUname = rownames(countsTable), row.names =  rownames(countsTable)))
     # Create the metagenomeSeq object
-    MGS = newMRexperiment(counts = OTU, phenoData = ADF, featureData = TDF)
+    MGS = metagenomeSeq::newMRexperiment(counts = OTU, phenoData = ADF, featureData = TDF)
     # Trigger metagenomeSeq to calculate its Cumulative Sum scaling factor.
-    MGS = cumNorm(MGS)
+    MGS = metagenomeSeq::cumNorm(MGS)
     # fit = fitZig(MGS, model.matrix(~pheno))
     # # You need to specify all OTUs to get the full table from MRfulltable.
     # x = MRfulltable(fit, number = nrow(assayData(MGS)$counts))
     # 
     if (length(levels(pheno)) == 2) {
-      fit = fitZig(MGS, model.matrix(~pheno))
+      fit = metagenomeSeq::fitZig(MGS, model.matrix(~pheno))
       ret$detail <- fit
       ret$p.value <- topTable(eBayes(fit$fit), number=nrow(countsTable), sort.by = "none")$P.Value
       names(ret$p.value) <- rownames(countsTable)
@@ -223,7 +225,7 @@ slam <- function(testName = c(
       levels(pheno) <- sprintf("L%s", levels(pheno))
       mod = model.matrix(~pheno)
       colnames(mod) = levels(pheno)
-      fit = fitZig(obj = MGS, mod = mod)
+      fit = metagenomeSeq::fitZig(obj = MGS, mod = mod)
       #fit = fitZig(MGS, model.matrix(~pheno))
       zigFit = fit$fit
       finalMod = fit$fit$design

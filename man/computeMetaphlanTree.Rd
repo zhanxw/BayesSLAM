@@ -18,7 +18,6 @@ a phylo tree
 Based on a MetaPhlAn tree, only keep the tip nodes that appear in the count table row names.
 }
 \examples{
-library(ape)
 prefix = system.file("extdata", package = "BayesSLAM")
 load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 countsTable <- otuTable

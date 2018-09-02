@@ -516,6 +516,7 @@ rescale <- function(x, constraint = c("sum", "product")) {
 
 # Download from https://github.com/HCBravoLab/metagenomeSeq/blob/master/R/cumNormStatFast.R on 
 # April 12, 2018
+#' @importFrom matrixStats rowMedians
 cumNormStatFast_copy <- function(mat, pFlag = FALSE, rel = 0.1, ...){
   # mat = returnAppropriateObj(obj, FALSE, FALSE)
   smat = lapply(1:ncol(mat), function(i) {

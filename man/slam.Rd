@@ -41,6 +41,7 @@ countsTable <- otuTable
 res <- slam("anova", otuTable, pheno, NULL, NULL)
 res <- slam("kruskal", otuTable, pheno, NULL, NULL)
 res <- slam("deseq2", otuTable, pheno, NULL, NULL)
+res <- slam("edger", otuTable, pheno, NULL, NULL)
 res <- slam("metagenomeSeq", otuTable, pheno, NULL, NULL)
 res <- slam("metagenomeSeq.zig", otuTable, pheno, NULL, NULL)
 

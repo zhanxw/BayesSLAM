@@ -1,13 +1,15 @@
 ## Draw phylogenetic tree from taxonomy table
 ## Xiaowei Zhan 
 ## August 2018
-options(stringsAsFactors = F)
-suppressPackageStartupMessages(library(phyloseq))
-suppressPackageStartupMessages(library(curatedMetagenomicData))
-suppressPackageStartupMessages(library(data.tree))
-suppressPackageStartupMessages(library(ggplot2))
-suppressPackageStartupMessages(library(ggtree))
 
+if (FALSE) {
+  options(stringsAsFactors = F)
+  suppressPackageStartupMessages(library(phyloseq))
+  suppressPackageStartupMessages(library(curatedMetagenomicData))
+  suppressPackageStartupMessages(library(data.tree))
+  suppressPackageStartupMessages(library(ggplot2))
+  suppressPackageStartupMessages(library(ggtree))
+}
 #' Draw phylogenetic tree in circular layout
 #'
 #' @param taxa phyloseq taxonomyTable class or a data frame
@@ -19,12 +21,14 @@ suppressPackageStartupMessages(library(ggtree))
 #' @export
 #'
 #' @examples
-#' library(curatedMetagenomicData)
-#' library(phyloseq)
-#' library(ggtree)
-#' library(ggplot2)
-#' res <- curatedMetagenomicData("Castro-*metaphlan*", dryrun=FALSE) #one dataset
-#' taxa<-tax_table(ExpressionSet2phyloseq(res[[1]]))
+#' if (FALSE) {
+#'   res <- curatedMetagenomicData("Castro-*metaphlan*", dryrun=FALSE) #one dataset
+#'   taxa<-tax_table(ExpressionSet2phyloseq(res[[1]]))
+#' } else {
+#'   prefix = system.file("extdata", package = "BayesSLAM")
+#'   load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
+#'   taxa <- taxaTable
+#' }
 #' drawPhyloTree(taxa)
 #' drawPhyloTree(taxa, highlight = "p__Bacteroidetes")
 #' drawPhyloTree(taxa, highlight = data.frame(taxa = c("p__Bacteroidetes", "s__Prevotella_salivae"), size = c(8, 5), col = c("red", "blue"), alpha = c(.6, .7)))
@@ -133,7 +137,7 @@ if (FALSE) {
   str(as.data.frame(all_taxa_df))
   all_taxa_df <- all_taxa_df[!duplicated(all_taxa_df),]
   plots <- lapply(seq_along(pvals), function(i) {
-  #plots <- lapply(seq(2), function(i) {
+    #plots <- lapply(seq(2), function(i) {
     print(i)
     p <- pvals[[i]]
     highlight = data.frame(taxa = names(p [ p < 0.05 & !is.na(p)]),
@@ -144,7 +148,7 @@ if (FALSE) {
                     c("s__Holdemania_filiformis")] = "green"
     highlight$col[highlight$taxa %in%
                     c("s__Bacteroides_thetaiotaomicron")] = "yellow"
-
+    
     drawPhyloTree(taxa = as.data.frame(all_taxa_df),
                   highlight = highlight,
                   title = fn[i])

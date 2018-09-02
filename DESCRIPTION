@@ -7,7 +7,8 @@ Author: Qiwei Li <qiwei.li@swmed.edu>, Shuang Jiang <shuangj@mail.smu.edu>, Xiao
 Maintainer: Qiwei Li <qiwei.li@swmed.edu>
 Description: Differential abundance analysis for metagenomic sequence data.
 License: GPL-3 + file LICENSE
-Imports: Rcpp (>= 0.12.17), data.tree
-Requires: phyloseq, ggtree, ggplot2, lattice, zoo, GUniFrac, ape
+Imports: Rcpp (>= 0.12.17), data.tree, ape, matrixStats
+Requires: phyloseq, ggtree, ggplot2, lattice, zoo, GUniFrac
+Suggests: DESeq, DESeq2, MiRKAT, MiSPU, edgeR, metagenomeSeq
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 6.0.1

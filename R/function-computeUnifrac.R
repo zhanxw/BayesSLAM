@@ -10,7 +10,6 @@
 #' @export
 #'
 #' @examples
-#' library(GUniFrac)
 #' prefix = system.file("extdata", package = "BayesSLAM")
 #' load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' countsTable <- otuTable

@@ -9,8 +9,8 @@
 #' @return a phylo tree
 #' @export
 #'
+#' @importFrom ape drop.tip read.tree
 #' @examples
-#' library(ape)
 #' prefix = system.file("extdata", package = "BayesSLAM")
 #' load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
 #' countsTable <- otuTable
