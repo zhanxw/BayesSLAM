@@ -1,4 +1,5 @@
-BayesSLAM
+# BayesSLAM
+Bayesian Statistical Learning Approach for Microbiome
 ========
 
 [![Build Status](https://travis-ci.org/zhanxw/BayesSLAM.svg?branch=master)](https://travis-ci.org/zhanxw/BayesSLAM)
