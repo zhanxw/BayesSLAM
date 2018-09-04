@@ -9,6 +9,18 @@ static double unif_rs(double a, double b);
 static double exp_rs(double a, double b);
 static double rnorm_trunc(double mu, double sigma, double lower, double upper);
 
+//' ZINB model
+//' 
+//' @param Y count matrix (taxa by sample)
+//' @param z phenotype vector
+//' @param iter number of iterations
+//' @param S a matrix used to aggregate upper taxonomy classes
+//' @param aggregate whether to perform analysis on upper taxonomy classes
+//' @param store whether to store additional Bayesian statistics in addition to PPI (posterior probability of inclusion)
+//' @param b a hyper parameter
+//' @parma h a hyper parameter
+//'
+//' @export
 // [[Rcpp::export]]
 Rcpp::List zinb_model_estimator(IntegerMatrix Y, IntegerVector z, NumericVector s, int iter, bool DPP, IntegerMatrix S, bool aggregate, bool store, double b, double h) {
   // Read data dimensionality

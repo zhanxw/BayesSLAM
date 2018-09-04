@@ -10,8 +10,7 @@
 #'
 #' @docType package
 #' @author Xiaowei Zhan <Xiaowei.Zhan@swmed.edu>
-#' @import Rcpp
-#' @importFrom Rcpp evalCpp
 #' @useDynLib BayesSLAM
+#' @importFrom Rcpp sourceCpp
 #' @name BayesSLAM
 NULL
