@@ -25,6 +25,9 @@ computeUnifrac <- function(otu.tab.rff, tree = NULL, alpha = c(0, 0.5, 1)) {
   otu.tab.rff <- otu.tab.rff [rownames(otu.tab.rff) %in% tree$tip.label, ]
   
   unifracs <-
-    GUniFrac(t(otu.tab.rff), tree, alpha)$unifracs
+    GUniFrac::GUniFrac(t(otu.tab.rff), tree, alpha)
+  if (!is.null(unifracs$unifracs)) {
+    unifracs <- unifracs$unifracs
+  }
   unifracs
 }

@@ -1,6 +1,4 @@
-## countsTable: sample by leafOTU
-## @return list pvalue, orig
-#' Unified statistical tests for microbiome data
+#' @title Unified statistical tests for microbiome data
 #'
 #' @param testName specify the name of a statistical test
 #' @param countsTable OTU feature by sample matrix 
@@ -21,6 +19,8 @@
 #' } else {
 #'   prefix = system.file("extdata", package = "BayesSLAM")
 #'   load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
+#'   # for the sake of speed, scale the maximum count to be 10,000
+#'   otuTable <- round(otuTable / max(colSums(otuTable)) * 10000)
 #' }
 #' countsTable <- otuTable
 #' res <- slam("anova", otuTable, pheno, NULL, NULL)
@@ -49,7 +49,6 @@
 #' countsTable <- otuTable
 #' res <- slam("anova", otuTable, pheno, NULL, NULL)
 #' res <- slam("kruskal", otuTable, pheno, NULL, NULL)
-
 slam <- function(testName = c(
   # test all OTUs
   "t", "anova",
@@ -66,20 +65,29 @@ slam <- function(testName = c(
   "mispu"), 
   countsTable, pheno, cov=NULL, 
   taxaTable = NULL) {
-  # check data validity
+  ## verify required packages are installed
   if (!checkPrereq(testName)) {
     warning("Please install required packages for ", testName)    
     return (NULL)
   }
+  ## check data validity
   stopifnot(ncol(countsTable) == length(pheno))
   stopifnot(length(unique(pheno)) >= 2)
-  
-  # set up the return value
+  if (any(grepl(pattern = "^[kpcofg]__", colnames(countsTable)))) {
+    warning("The columns input count table seems to be taxanomy, you may need to transpose it!")
+  }
   pheno.level <- levels(factor(pheno))
-  startTime <- Sys.time()
+  if (length(pheno.level) == length(pheno)) {
+    warning("Please verify that the phenotypes are binary outcomes!")
+  }
+  
+  ## set up the return value
   ret <- list(p.value = NA, detail = NA, timing = NA)
   
-  # main body
+  ## start analysis
+  startTime <- Sys.time()
+  
+  ## main body
   if (testName == "t") {
     countsTable <- apply(countsTable, 2, function(x) { 
       s = sum(x); if (s == 0) {warning("Sample has no counts")}; x / sum(x)} )
@@ -245,7 +253,7 @@ slam <- function(testName = c(
     library(GUniFrac)
     #countsTable <- otuTable
     # Rarefaction
-    otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
+    otu.tab.rff <- t(Rarefy(t(countsTable))$otu.tab.rff)
     # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
     dw <- unifracs[, , "d_1"] # Weighted UniFrac
@@ -260,7 +268,7 @@ slam <- function(testName = c(
     library(GUniFrac)
     #countsTable <- otuTable
     # Rarefaction
-    otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
+    otu.tab.rff <- t(Rarefy(t(countsTable))$otu.tab.rff)
     # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
     # unifracs <-
@@ -271,12 +279,12 @@ slam <- function(testName = c(
     d0 <- unifracs[, , "d_0"]      # GUniFrac with alpha 0
     d5 <- unifracs[, , "d_0.5"]    # GUniFrac with alpha 0.5
     
-    ret$detail <- PermanovaG(unifracs[, , c("d_1", "d_UW")] ~ pheno)
+    ret$detail <- GUniFrac::PermanovaG(unifracs[, , c("d_1", "d_UW")] ~ pheno)
     ret$p.value <- ret$detail$p.tab$omni.p.value
   } else if (testName == "mircat") {
     library(MiRKAT)
     # Rarefaction
-    otu.tab.rff <- Rarefy(countsTable)$otu.tab.rff
+    otu.tab.rff <- t(Rarefy(t(countsTable))$otu.tab.rff)
     # source("function-computeUnifrac.R")
     unifracs = computeUnifrac(otu.tab.rff)
     D.weighted = unifracs[, , "d_1"]
@@ -381,3 +389,21 @@ t stats
   return(isSucc)
 }
 # https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-017-0237-y
+
+
+#' @title Deprecated - Unified statistical tests for microbiome data
+#'
+#' @param testName specify the name of a statistical test
+#' @param countsTable OTU feature by sample matrix 
+#' @param pheno vector, factor, 2 or 3 groups
+#' @param cov matrix, can be NULL
+#' @param taxaTable phyloseq taxonomyTable (created by tax_table) 
+#'
+#' @return a list of pvalue, detail and timing. The detail element stores original results
+#' @export
+mbTest <- function(testName,
+  countsTable, pheno, cov=NULL, 
+  taxaTable = NULL) {
+  .Deprecated("slam")
+  invisible(NULL)
+}

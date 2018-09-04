@@ -23,9 +23,6 @@ slam(testName = c("t", "anova", "wilcox", "kruskal", "deseq", "deseq2",
 \value{
 a list of pvalue, detail and timing. The detail element stores original results
 }
-\description{
-Unified statistical tests for microbiome data
-}
 \examples{
  ## two groups
 if (FALSE) {
@@ -36,6 +33,8 @@ if (FALSE) {
 } else {
   prefix = system.file("extdata", package = "BayesSLAM")
   load(file.path(prefix, "Castro-NallarE_2015.Rdata"))
+  # for the sake of speed, scale the maximum count to be 10,000
+  otuTable <- round(otuTable / max(colSums(otuTable)) * 10000)
 }
 countsTable <- otuTable
 res <- slam("anova", otuTable, pheno, NULL, NULL)
